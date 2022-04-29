@@ -110,7 +110,7 @@ public class TurnServiceImpl implements TurnService{
         }
 
         boolean hasBlock = defender.move().type().equals(TypeBlock);
-        int blockPower = defender.move().basePower();
+        double blockPower = defender.move().basePower();
         return (int) (!hasBlock ? damage : damage * (1-blockPower/100));
     }
 
