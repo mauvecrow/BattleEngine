@@ -4,9 +4,11 @@ import java.util.Map;
 
 public class TurnState {
 
-    private final PlayerState player1State;
-    private final PlayerState player2State;
-    private final String[] sequence;
+    private PlayerState player1State;
+    private PlayerState player2State;
+    private String[] sequence;
+
+    public TurnState(){}
 
     public TurnState(PlayerState player1State, PlayerState player2State) {
         this.player1State = player1State;
@@ -31,8 +33,23 @@ public class TurnState {
         return player1State;
     }
 
+    public void setPlayer1State(PlayerState player1State) {
+        this.player1State = player1State;
+    }
+
     public PlayerState getPlayer2State() {
         return player2State;
     }
 
+    public void setPlayer2State(PlayerState player2State) {
+        this.player2State = player2State;
+    }
+
+    public String[] getSequence() {
+        return sequence;
+    }
+
+    public void setSequence(String[] sequence) {
+        this.sequence = sequence;
+    }
 }
