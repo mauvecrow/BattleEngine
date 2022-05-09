@@ -100,10 +100,10 @@ public class TurnServiceImpl implements TurnService{
         double defFocus = targetStats.get(StatFocus);
 
         // damage formula constants
-        int balanceValue = 100;
+        int balanceValue = 50;
         int powerScale = 100;
         switch (attackCategory) {
-            case CategoryCombat -> damage = (atkEnergy / (defEnergy + balanceValue) * atkForce / defReflex * atkBasePower + 2) * powerScale;
+            case CategoryCombat -> damage = (atkEnergy/(2*balanceValue) * atkForce / defReflex * atkBasePower + 2) * powerScale;
             case CategoryMagic -> damage = (atkEnergy / (defEnergy + balanceValue) * atkSpirit / defFocus * atkBasePower + 2) * powerScale;
             case CategorySpecial -> damage = ((atkForce + atkSpirit + atkEnergy) / (defReflex + defFocus) * atkBasePower + 2) * powerScale;
             default -> damage = 0;
@@ -138,14 +138,16 @@ public class TurnServiceImpl implements TurnService{
                              Map<String, Integer> sourceStats, Map<String, Integer> targetStats){
         var prevHealth = targetStats.get(StatHealth);
         var damage = damageCalculation(source, target, sourceStats, targetStats);
-        targetStats.put(StatHealth, prevHealth-damage);
+        var updatedHealth = Math.max(prevHealth - damage, 0); // prevent negative health result
+        targetStats.put(StatHealth, updatedHealth);
     }
 
     private void applyCost(TurnState.PlayerState target, Map<String, Integer> updatedStats){
         var oldStats = target.stats();
         var cost = target.move().cost();
         var prevEnergy = oldStats.get(StatEnergy);
-        updatedStats.put(StatEnergy, prevEnergy-cost);
+        var updatedEnergy = Math.max(prevEnergy - cost, 0); // prevent negative energy result
+        updatedStats.put(StatEnergy, updatedEnergy);
     }
 
     private TurnState buildTurnState(TurnState turn, HashMap<String, Integer> firstUpdatedStats, HashMap<String, Integer> secondUpdatedStats) {
