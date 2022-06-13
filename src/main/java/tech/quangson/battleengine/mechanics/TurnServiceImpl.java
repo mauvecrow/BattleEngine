@@ -26,7 +26,8 @@ public class TurnServiceImpl implements TurnService{
     public static final String StatAgility = "Agility";
 
     @Override
-    public TurnState evaluateTurn(TurnState turn) {
+    public TurnState[] evaluateTurn(TurnState turn) {
+        var result = new TurnState[2];
         var playerSequence = determineSequence(turn);
         var first = derivePlayerState(turn, playerSequence[0]);
         var second = derivePlayerState(turn, playerSequence[1]);
@@ -34,20 +35,26 @@ public class TurnServiceImpl implements TurnService{
         var firstUpdatedStats = new HashMap<>(first.stats());
         var secondMoveType = second.move().type();
         var secondUpdatedStats = new HashMap<>(second.stats());
+
         switch (firstMoveType) {
             case TypeDamage -> applyDamage(first, second, firstUpdatedStats, secondUpdatedStats);
             case TypeBuff -> applyBuff(first, firstUpdatedStats);
-            case TypeDebuff -> applyDebuff(first, second, secondUpdatedStats);
+            case TypeDebuff -> applyDebuff(first, secondUpdatedStats);
         }
         applyCost(first, firstUpdatedStats);
+        var firstRoundResult = buildTurnState(turn, Map.copyOf(firstUpdatedStats), Map.copyOf(secondUpdatedStats));
+        result[0] = firstRoundResult;
+
         switch(secondMoveType){
             case TypeDamage -> applyDamage(second, first, secondUpdatedStats, firstUpdatedStats);
             case TypeBuff -> applyBuff(second, secondUpdatedStats);
-            case TypeDebuff -> applyDebuff(second, first, firstUpdatedStats);
+            case TypeDebuff -> applyDebuff(second, firstUpdatedStats);
         }
         applyCost(second, secondUpdatedStats);
 
-        return buildTurnState(turn, firstUpdatedStats, secondUpdatedStats);
+        var secondRoundResult =  buildTurnState(turn, Map.copyOf(firstUpdatedStats), Map.copyOf(secondUpdatedStats));
+        result[1] = secondRoundResult;
+        return result;
     }
 
     @Override
@@ -100,10 +107,10 @@ public class TurnServiceImpl implements TurnService{
         double defFocus = targetStats.get(StatFocus);
 
         // damage formula constants
-        int balanceValue = 50;
+        int balanceValue = 100;
         int powerScale = 100;
         switch (attackCategory) {
-            case CategoryCombat -> damage = (atkEnergy/(2*balanceValue) * atkForce / defReflex * atkBasePower + 2) * powerScale;
+            case CategoryCombat -> damage = (atkEnergy/(defEnergy + balanceValue) * atkForce / defReflex * atkBasePower + 2) * powerScale;
             case CategoryMagic -> damage = (atkEnergy / (defEnergy + balanceValue) * atkSpirit / defFocus * atkBasePower + 2) * powerScale;
             case CategorySpecial -> damage = ((atkForce + atkSpirit + atkEnergy) / (defReflex + defFocus) * atkBasePower + 2) * powerScale;
             default -> damage = 0;
@@ -116,20 +123,18 @@ public class TurnServiceImpl implements TurnService{
 
     private void applyBuff(TurnState.PlayerState target, Map<String, Integer> updatedStats){
         var buffs = target.move().buffs();
-        var oldStats = target.stats();
         for(String buff : buffs.keySet()){
             double buffAmt = buffs.get(buff);
-            double newAmt = oldStats.get(buff) * (1 + buffAmt/100);
+            double newAmt = updatedStats.get(buff) * (1 + buffAmt/100);
             updatedStats.put(buff, (int) newAmt);
         }
     }
 
-    private void applyDebuff(TurnState.PlayerState source, TurnState.PlayerState target, Map<String, Integer> updatedStats){
-        var debuffs = source.move().debuffs();
-        var oldStats = target.stats();
+    private void applyDebuff(TurnState.PlayerState target, Map<String, Integer> updatedStats){
+        var debuffs = target.move().debuffs();
         for(String debuff : debuffs.keySet()){
             double debuffAmt = debuffs.get(debuff);
-            double newAmt = oldStats.get(debuff)  * (1 - debuffAmt/100);
+            double newAmt = updatedStats.get(debuff)  * (1 - debuffAmt/100);
             updatedStats.put(debuff, (int) newAmt);
         }
     }
@@ -150,7 +155,7 @@ public class TurnServiceImpl implements TurnService{
         updatedStats.put(StatEnergy, updatedEnergy);
     }
 
-    private TurnState buildTurnState(TurnState turn, HashMap<String, Integer> firstUpdatedStats, HashMap<String, Integer> secondUpdatedStats) {
+    private TurnState buildTurnState(TurnState turn, Map<String, Integer> firstUpdatedStats, Map<String, Integer> secondUpdatedStats) {
         var player1Id = turn.getPlayer1State().playerId();
         var player2Id = turn.getPlayer2State().playerId();
         var player1Move = turn.getPlayer1State().move();
