@@ -92,7 +92,7 @@ public class TurnServiceTests {
         var p2 = basicBuild(move, stats);
         var turn = new TurnState(p1,p2);
         // test
-        var resultState = ts.evaluateTurn(turn);
+        var resultState = ts.evaluateTurn(turn)[1];
         var p2OldForceStat = turn.getPlayer2State().getStat("Force");
         var p2NewForceStat = resultState.getPlayer2State().getStat("Force");
         Assertions.assertEquals(100, p2OldForceStat);
@@ -111,7 +111,7 @@ public class TurnServiceTests {
         var p2 = basicBuild(stats);
         var turn = new TurnState(p1,p2);
         // test
-        var resultState = ts.evaluateTurn(turn);
+        var resultState = ts.evaluateTurn(turn)[1];
         var p2OldStat = turn.getPlayer2State().getStat("Reflex");
         var p2NewStat = resultState.getPlayer2State().getStat("Reflex");
         Assertions.assertEquals(100, p2OldStat);
@@ -127,7 +127,7 @@ public class TurnServiceTests {
         var p2 = basicBuild(stats);
         var turn = new TurnState(p1, p2);
         // test
-        var resultState = ts.evaluateTurn(turn);
+        var resultState = ts.evaluateTurn(turn)[1];
         /*
             note: p2 should go first due to speed tie (by design)
             p1 damage is stronger by going second since p2's energy will go down after attack
@@ -155,7 +155,7 @@ public class TurnServiceTests {
                 .build();
         var turn = new TurnState(p1, p2);
         // test
-        var resultState = ts.evaluateTurn(turn);
+        var resultState = ts.evaluateTurn(turn)[1];
         /*
             note: p2 should go first due to speed tie (by design)
             p1 damage is stronger by going second since p2's energy will go down after attack
@@ -172,12 +172,14 @@ public class TurnServiceTests {
         var stats1 = basicStats();
         stats1.put("Spirit",90);
         stats1.put("Focus",50);
+        stats1.put("Health", 30000);
         var move = new MoveBuilder().category("Special").build();
         var p1 = basicBuild(move, stats1);
         var stats2 = basicStats();
         stats2.put("Force",80);
         stats2.put("Focus",60);
         stats2.put("Reflex",80);
+        stats2.put("Health", 30000);
         var p2 = new PlayerBuilder()
                 .playerId("p2") //can't have two stat builds b/c they will have the same id
                 .move(move)
@@ -185,7 +187,7 @@ public class TurnServiceTests {
                 .build();
         var turn = new TurnState(p1, p2);
         // test
-        var resultState = ts.evaluateTurn(turn);
+        var resultState = ts.evaluateTurn(turn)[1];
         /*
             note: p2 should go first due to speed tie (by design)
             p1 damage is stronger by going second since p2's energy will go down after attack
@@ -231,11 +233,37 @@ public class TurnServiceTests {
                 .build();
         var turn = new TurnState(p1,p2);
         // test
-        var resultState = ts.evaluateTurn(turn);
+        var resultState = ts.evaluateTurn(turn)[1];
         var damageOnP1 = p1.getStat("Health") - resultState.getPlayer1State().getStat("Health");
         Assertions.assertEquals(3425, damageOnP1);
         Assertions.assertEquals(p2.getStat("Health"), resultState.getPlayer2State().getStat("Health"));
 
+    }
+
+    @Test
+    void testBuffDebuffSameStat(){
+        var buffingMove = new MoveBuilder()
+                .type("Buff")
+                .buffs(Map.of("Force", 20))
+                .build();
+        var p1 = basicBuild(buffingMove);
+        var debuffingMove = new MoveBuilder()
+                .type("Debuff")
+                .debuffs(Map.of("Force",20))
+                .build();
+        var p2Stats = basicStats();
+        p2Stats.put("Agility", 120);
+        var p2 = basicBuild(debuffingMove, p2Stats);
+        var turn = new TurnState(p1, p2);
+        // test
+        var resultingTurns = ts.evaluateTurn(turn);
+        var turn1 = resultingTurns[0];
+        var p1Force_t1 = turn1.getPlayer1State().getStat("Force");
+        var turn2 = resultingTurns[1];
+        var p1Force_t2 = turn2.getPlayer1State().getStat("Force");
+
+        Assertions.assertEquals(60, p1Force_t1);
+        Assertions.assertEquals(72, p1Force_t2);
     }
 
 
